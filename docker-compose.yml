@@ -1,0 +1,61 @@
+
+version: '4'
+
+services:
+  zookeeper:
+    image: quay.io/debezium/zookeeper:1.9.4.Final
+    ports:
+     - 2181:2181
+     - 2888:2888
+     - 3888:3888
+    volumes:
+      - zookeeperData:/zookeeper/data
+      - zookeeperTxns:/zookeeper/txns
+      - zookeeperLogs:/zookeeper/logs
+
+  kafka:
+    image: quay.io/debezium/kafka:1.9.4.Final
+    ports:
+     - 9092:9092
+    links:
+     - zookeeper
+    volumes:
+      - kafkadata:/kafka/data
+      - kafkaLogs:/kafka/logs
+    environment:
+     - ZOOKEEPER_CONNECT=zookeeper:2181
+
+  ai_review:
+    container_name: 'ai_review'
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    volumes:
+      - .:/app
+    command: npm run start:debug
+    ports:
+      - 3000:3000
+      - 9229:9229
+    environment:
+      NODE_ENV: docker-compose
+
+
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - 8081:8080
+    links:
+     - zookeeper
+     - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+
+volumes:
+  kafkadata:
+  kafkaLogs:
+  zookeeperData:
+  zookeeperLogs:
+  zookeeperTxns:
